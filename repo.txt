@@ -1,0 +1,83 @@
+@RestController
+@CrossOrigin("*")
+public class ReportController {
+
+    private final static Log logger = LogFactory.getLog(ReportController.class);
+
+    @GetMapping(value = "/api/bill", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> getBill() throws IOException, JRException {
+        byte[] reportBytes = generateReport();
+        System.out.println(reportBytes.toString());
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(reportBytes);
+    }
+
+    private byte[] generateReport() throws IOException, JRException {
+        ByteArrayOutputStream outputStream = null;
+        try {
+            JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile("D:/report1.jasper");
+            
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap(), new JREmptyDataSource());
+            outputStream = new ByteArrayOutputStream();
+            JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            logger.error("some eroor occured ::", ex); 
+        }
+        return outputStream.toByteArray();
+    }
+
+//////////////////////////////////
+
+public class MyReportGenerator {
+    
+    public static byte[] generateReport(List<Vehicle> data) throws JRException {
+        // Compile JRXML template.
+        String templatePath = "D:/report1.jasper";
+        JasperCompileManager.compileReportToFile(templatePath);
+        
+        // Populate JasperPrint with data.
+        JasperPrint jasperPrint = JasperFillManager.fillReport(templatePath, null, new JRBeanCollectionDataSource(data));
+        
+        // Export to PDF.
+        return JasperExportManager.exportReportToPdf(jasperPrint);
+    }
+}
+//////////Angular
+downloadReport(): void {
+    // Replace 'YOUR_API_ENDPOINT' with your actual API endpoint URL
+    const apiUrl = 'http://localhost:8080/api/bill';
+
+    // Make a GET request to the API endpoint to download the PDF
+    fetch(apiUrl, {
+      method: 'GET',
+    })
+      .then(response => {
+        // Check if the response is successful
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.blob(); // Extract the binary data from the response
+      })
+      .then(blob => {
+        // Create a blob URL for the downloaded PDF
+        const url = window.URL.createObjectURL(blob);
+
+        // Create a temporary anchor element to trigger the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'report.pdf'; // Set the filename for the downloaded PDF
+        document.body.appendChild(a);
+
+        // Click the anchor element to start the download
+        a.click();
+
+        // Cleanup: revoke the blob URL and remove the anchor element
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      })
+      .catch(error => {
+        // Handle any errors that occur during the download process
+        console.error('Error downloading report:', error);
+      });
+  }.
+<button (click)="downloadReport()">Download Report</button>
