@@ -4,27 +4,68 @@ public class ReportController {
 
     private final static Log logger = LogFactory.getLog(ReportController.class);
 
+    @Autowired
+    private vehicleRepository myRepository;
+
+//    @GetMapping(value = "/api/bill", produces = MediaType.APPLICATION_PDF_VALUE)
+//    public ResponseEntity<byte[]> getBill() throws IOException, JRException {
+//        List<Vehicle> data = myRepository.findAll();
+//        byte[] reportBytes = generateReport();
+//        System.out.println(reportBytes.toString());
+//        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(reportBytes);
+//    }
+//
+//    private byte[] generateReport() throws IOException, JRException {
+//        ByteArrayOutputStream outputStream = null;
+//        try {
+//            JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile("D:/report1.jasper");
+//            
+//            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap(), new JREmptyDataSource());
+//            outputStream = new ByteArrayOutputStream();
+//            JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
+//        } catch (Exception ex) {
+//            ex.printStackTrace();
+//            logger.error("some eroor occured ::", ex); 
+//        }
+//        return outputStream.toByteArray();
+//    }
     @GetMapping(value = "/api/bill", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> getBill() throws IOException, JRException {
-        byte[] reportBytes = generateReport();
-        System.out.println(reportBytes.toString());
+        List<Vehicle> data = myRepository.findAll();
+        byte[] reportBytes = generateReport(data); // Pass fetched data to the generateReport method
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(reportBytes);
     }
 
-    private byte[] generateReport() throws IOException, JRException {
+    private byte[] generateReport(List<Vehicle> data) throws IOException, JRException {
         ByteArrayOutputStream outputStream = null;
         try {
             JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile("D:/report1.jasper");
-            
-            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap(), new JREmptyDataSource());
+
+            // Create a list to hold only the flateNumber values
+            List<String> flateNumbers = new ArrayList<>();
+            for (Vehicle vehicle : data) {
+                flateNumbers.add(vehicle.getFlatenNo());
+            }
+
+            // Convert the list of flateNumbers to a format suitable for JasperReports
+            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(flateNumbers);
+
+            // Create a map to hold the parameters (including the fetched data)
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("DummyTest", "asd"); // Set the flateNumbers as a parameter
+
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource());
             outputStream = new ByteArrayOutputStream();
             JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
         } catch (Exception ex) {
             ex.printStackTrace();
-            logger.error("some eroor occured ::", ex); 
+            logger.error("some error occurred ::", ex);
         }
         return outputStream.toByteArray();
     }
+
+}
+
 
 //////////////////////////////////
 
