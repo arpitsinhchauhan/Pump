@@ -1,0 +1,63 @@
+@GetMapping(value = "/api/bill", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> getBill(@RequestParam("date") @DateTimeFormat(pattern = "yyyy-MM-dd") Date date) throws IOException, JRException {
+        List<Object[]> data = Table1Repository.getDataForDate(date); // Fetch data based on the provided date
+        byte[] reportBytes = generateReport(data, date); // Pass fetched data to the generateReport method
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(reportBytes);
+    }
+
+    private byte[] generateReport(List<Object[]> data, Date date) throws IOException, JRException {
+        ByteArrayOutputStream outputStream = null;
+        try {
+            JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile("D:/report1.jasper");
+
+            // Create a map to hold the parameters (including the fetched data)
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("Date", date); // Set the date as a parameter
+            String jsonData = new ObjectMapper().writeValueAsString(data);
+//            if (!data.isEmpty() && data.get(0).length > 0) {
+//                parameters.put("prate", data.get(0)[0]);
+//            } else {
+//                // Handle case when data is empty or first array has no elements
+//                parameters.put("prate", null); // Or provide a default value
+//            }
+            parameters.put("pltr", data.get(0)[2]);
+            parameters.put("prate", data.get(0)[3]);
+            parameters.put("dltr", data.get(0)[4]);
+            parameters.put("drate", data.get(0)[5]);
+            parameters.put("oprice", data.get(0)[7]);
+
+            double psum = 0.0;
+            double dsum = 0.0;
+
+// Assuming data.get(0) exists and is a double array with at least 8 elements
+            if (data.get(0).length >= 8) {
+                // Extract values from data array and put them into parameters map
+                parameters.put("pltr", Double.parseDouble((String) data.get(0)[2]));
+                parameters.put("prate", Double.parseDouble((String) data.get(0)[3]));
+                parameters.put("dltr", Double.parseDouble((String) data.get(0)[4]));
+                parameters.put("drate", Double.parseDouble((String) data.get(0)[5]));
+
+                // Calculate the sum of the values using a loop
+                for (int i = 2; i <= 3; i++) {
+                    psum += Double.parseDouble((String) data.get(0)[i]);
+                }
+                for (int i = 4; i <= 5; i++) {
+                    dsum += Double.parseDouble((String) data.get(0)[i]);
+                }
+            }
+
+            parameters.put("ptotal", psum);
+            parameters.put("dtotal", dsum);
+            double oprice = Double.parseDouble((String) data.get(0)[7]);
+
+            double mtotal = psum + dsum + oprice;
+            parameters.put("mtotal", mtotal);
+
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource());
+            outputStream = new ByteArrayOutputStream();
+            JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
+        } catch (JRException ex) {
+            logger.error("some error occurred ::", ex);
+        }
+        return outputStream.toByteArray();
+    }
