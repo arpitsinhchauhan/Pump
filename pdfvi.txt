@@ -1,0 +1,41 @@
+@RequestMapping(value = "/pdfData", method = RequestMethod.POST)
+    public byte[] authenticateUser(@RequestParam("fileName") String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        if (!fileName.endsWith(".pdf") && !fileName.endsWith(".PDF")) {
+            fileName = fileName + ".pdf";
+        }
+        try (InputStream input = DBConfig.class.getClassLoader().getResourceAsStream("application.properties")) {
+            StringBuilder filterData = new StringBuilder();
+            Properties prop = new Properties();
+            prop.load(input);
+            filterData.append(prop.getProperty("docs.file_path"));
+            filterData.append(Constant.MACHINE_ATTACHMENT);
+            //File pdf = new File(filterData + fileName);
+
+            Path path = Paths.get(filterData.toString() + fileName);
+            byte[] pdf = Files.readAllBytes(path);
+
+            if (Objects.isNull(pdf)) {
+                return null;
+            }
+            return pdf;
+
+        } catch (IOException ex) {
+        } catch (Exception ex) {
+        }
+        return null;
+    }
+//////////application.pro
+docs.file_path=D:\\URS_DOCS\\
+
+
+public InputStream getResourceAsStream(String name) {
+        URL url = getResource(name);
+        try {
+            return url != null ? url.openStream() : null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
