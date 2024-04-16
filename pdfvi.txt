@@ -39,3 +39,12 @@ public InputStream getResourceAsStream(String name) {
             return null;
         }
     }
+
+getPDFData(filePath): Observable<any> {
+    const param = new HttpParams().set("fileName", filePath);
+    return this.http.post(API_GET_MODULEAPP_PDFDATA, null, {
+      responseType: "arraybuffer",
+      params:param,
+      headers: new HttpHeaders().append("Content-Type", "application/pdf"),
+    });
+  }
