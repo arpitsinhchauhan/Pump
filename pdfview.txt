@@ -1,0 +1,599 @@
+<div class="content" role="main">
+    <div>
+        <h4 class="card-title">{{'Application List'}}
+        </h4>
+    </div>
+    <!-- Terminal -->
+    <div class="card" style="height: 100%;width: 100%;">
+
+
+        <div class="card-body">
+            <div class="example-container mat-elevation-z8" style="width: 100%;" *ngIf="moduleAppList.length > 0">
+                <div class="col-md-4">
+                    <mat-form-field>
+                        <input matInput (ngModelChange)="applyFilter($event)" [(ngModel)]="searchText"
+                            placeholder="Search&hellip;" vkeyboard>
+                    </mat-form-field>
+                </div>
+                <table mat-table matSort [dataSource]="dataSource">
+                    <ng-container matColumnDef="srNo">
+                        <th class="header type-column" mat-header-cell *matHeaderCellDef>
+                            <span>Sr No.</span>
+                        </th>
+                        <td mat-cell *matCellDef="let element; let i = index;"> {{i+1}} </td>
+                    </ng-container>
+                    <ng-container matColumnDef="appName">
+                        <th class="header type-column" mat-header-cell *matHeaderCellDef>
+                            <span>App</span>
+                        </th>
+                        <td mat-cell *matCellDef="let request">{{request.appName}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="type">
+                        <th class="header type-column" mat-header-cell *matHeaderCellDef>
+                            <span>Type</span>
+                        </th>
+                        <td mat-cell *matCellDef="let request">{{getValue(request.type)}}</td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="dateModified">
+                        <th class="header date-column" mat-header-cell *matHeaderCellDef>
+                            <span>Date Modified</span>
+                        </th>
+                        <td mat-cell *matCellDef="let request">{{request.dateModified | date: 'MM/dd/yyyy HH:mm:ss'}}
+                        </td>
+                    </ng-container>
+                    <ng-container matColumnDef="edit">
+                        <th class="header date-column" mat-header-cell *matHeaderCellDef>
+                            <span>Image Preview & Edit</span>
+                        </th>
+                        <td mat-cell *matCellDef="let request">
+                            <button mat-icon-button [disabled]="request.logoDetails.length == 0"
+                                style="margin-left: 25px;" (click)="viewLogoDetails(request);$event.stopPropagation();">
+                                <mat-icon>remove_red_eye</mat-icon>
+                            </button>
+                            <!-- <a *ngIf="request.fileName && request.fileName.length > 0" style="margin-left: 25px; " (click)="openPDFViewer(request);$event.stopPropagation(); ">
+                                <mat-icon>picture_as_pdf</mat-icon>
+                            </a> -->
+                            <a style="margin-left: 25px;" (click)="$event.stopPropagation();">
+                                <button mat-icon-button [matMenuTriggerFor]="menu">
+                                    <mat-icon style="color: black;">picture_as_pdf</mat-icon>
+                                </button>
+                                <mat-menu #menu="matMenu">
+                                    <button mat-menu-item (click)="selectPDFOption(CT.WD,request);">Wiring
+                                        Drawing</button>
+                                    <button mat-menu-item (click)="selectPDFOption(CT.GA,request);">GA
+                                        Drawing</button>
+                                    <button mat-menu-item (click)="selectPDFOption(CT.DQ,request);">Design
+                                        Qualification</button>
+                                    <button mat-menu-item (click)="selectPDFOption(CT.NFS,request);">Function
+                                        Specification</button>
+                                </mat-menu>
+                            </a>
+                            <button mat-icon-button style="margin-left: 25px; " *ngIf="isAdmin "
+                                (click)="manageAppDetails(request);$event.stopPropagation(); ">
+                                <mat-icon style="color: black;">edit</mat-icon>
+                                <!-- <i class="material-icons ">remove_red_eye</i> -->
+                            </button>
+                        </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="columnsToDisplay "></tr>
+                    <tr mat-row *matRowDef="let request; columns: columnsToDisplay " [routerLink]=" "
+                        (click)="navigateToUrl(request) "></tr>
+                </table>
+                <mat-paginator [pageSizeOptions]="[15, 30,50] " showFirstLastButtons></mat-paginator>
+            </div>
+        </div>
+    </div>
+</div>
+
+///////////////////////////////////////////
+
+export class HomeComponent implements OnInit, OnDestroy {
+  title = 'alaram-app';
+  private paginator: MatPaginator;
+  private sort: MatSort;
+
+  CT = Constants;
+
+  @ViewChild(MatSort, { static: false }) set matSort(ms: MatSort) {
+    this.sort = ms;
+    this.setDataSourceAttributes();
+  }
+
+  @ViewChild(MatPaginator, { static: false }) set matPaginator(mp: MatPaginator) {
+    this.paginator = mp;
+    this.setDataSourceAttributes();
+  }
+
+  moduleAppList: ModuleApp[] = [];
+
+
+
+  dataSource = new MatTableDataSource(this.moduleAppList);
+  columnsToDisplay = ['srNo', 'appName', 'type', 'dateModified', 'edit'];
+  dataSubject = new BehaviorSubject<Element[]>([]);
+  searchText = "";
+  isAdmin: boolean;
+  profile;
+
+  unsubscribe$: Subject<any> = new Subject();
+  flag: boolean;
+  isProcessing: boolean;
+
+  constructor(private dialog: MatDialog,
+    private router: Router, private commonService: CommonService, private sanitizer: DomSanitizer,
+    private loaderService: LoaderService, private spinnerService: NgxSpinnerService,
+    private notificationService: NotificationService, private translate: TranslateService) {
+    this.dataSource.data = this.moduleAppList;
+    this.isAdmin = sessionStorage.getItem(this.CT.USER_ROLE) == this.CT.ROLE_ADMIN ? true : false;
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe$.next(-1);
+    this.unsubscribe$.complete();
+  }
+
+
+  ngOnInit() {
+    this.loaderService.display(true);
+    this.commonService.changeSubject(1);
+    this.commonService.getProfileObs()
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe(profile => {
+        if (profile == 1 && this.flag) {
+          this.manageAppDetails();
+        }
+        this.flag = true;
+      });
+    this.getModuleAppDetails();
+    setTimeout(() => {
+      this.spinnerService.hide();
+    }, 1000);
+  }
+
+  applyFilter(event) {
+    const filterValue = event;
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
+  }
+
+  setDataSourceAttributes() {
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+  }
+
+  // Dynamically set the SVG elements' class to change their color depending on the request status
+  getStateColor(status): string {
+    switch (status) {
+      case ('Submitted'):
+      case ('Draft'):
+        return 'green-svg';
+        break;
+
+      case ('Closed'):
+        return 'gray-svg';
+        break;
+    }
+    return '';
+  }
+
+  // If a request amount is zero, display "FREE", else display the amount
+  getAmount(amount) {
+    return (amount === 0 ? 'FREE' : amount + " €");
+  }
+
+  manageAppDetails(moduleApp?: ModuleApp) {
+    if (!this.isAdmin) {
+      return;
+    }
+    if (!moduleApp) {
+      moduleApp = new ModuleApp();
+    }
+    let dialogRef = this.dialog.open(AddAppDetailComponent, {
+      data: {
+        moduleApp: moduleApp,
+        formType: moduleApp.id ? this.CT.EDIT : this.CT.ADD
+      }
+    });
+    dialogRef.afterClosed().subscribe(res => {
+      if (res) {
+        this.getModuleAppDetails();
+      }
+    });
+  }
+
+  selectPDFOption(option: string, moduleApp?: ModuleApp) {
+    this.openPDFViewer(option, moduleApp);
+  }
+
+  openPDFViewer(options: string, moduleApp?: ModuleApp) {
+
+    if (options == this.CT.GA) {
+
+      if (!moduleApp.ga || moduleApp.ga.length == 0) {
+        this.translate.get("PDF not attached").subscribe((res: string) => {
+          this.notificationService.failure(res);
+
+        });
+        return;
+      }
+      this.isProcessing = true;
+      this.loaderService.display(true);
+      this.commonService.getPDFData(moduleApp.ga).subscribe(res => {
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        if (!res || res == null) {
+          this.translate.get("PDF not found").subscribe((res: string) => {
+            this.notificationService.failure(res);
+          })
+        } else {
+          var base64String = this._arrayBufferToBase64(res as ArrayBuffer);
+          this.openPDFViewerCompoenet(base64String, moduleApp.appName);
+        }
+      }, error => {
+        // this.openPDFViewerCompoenet("base64String", moduleApp.appName);
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        console.log(error)
+      });
+
+    } else if (options == this.CT.DQ) {
+
+      if (!moduleApp.dq || moduleApp.dq.length == 0) {
+        return;
+      }
+      this.isProcessing = true;
+      this.loaderService.display(true);
+      this.commonService.getPDFData(moduleApp.dq).subscribe(res => {
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        if (!res || res == null) {
+          this.translate.get("PDF not found").subscribe((res: string) => {
+            this.notificationService.failure(res);
+          })
+        } else {
+          var base64String = this._arrayBufferToBase64(res as ArrayBuffer);
+          this.openPDFViewerCompoenet(base64String, moduleApp.appName);
+        }
+      }, error => {
+        // this.openPDFViewerCompoenet("base64String", moduleApp.appName);
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        console.log(error)
+      });
+
+    }
+    else if (options == this.CT.NFS) {
+      if (!moduleApp.nfs || moduleApp.nfs.length == 0) {
+        return;
+      }
+      this.isProcessing = true;
+      this.loaderService.display(true);
+      this.commonService.getPDFData(moduleApp.nfs).subscribe(res => {
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        if (!res || res == null) {
+          this.translate.get("PDF not found").subscribe((res: string) => {
+            this.notificationService.failure(res);
+          })
+        } else {
+          var base64String = this._arrayBufferToBase64(res as ArrayBuffer);
+          this.openPDFViewerCompoenet(base64String, moduleApp.appName);
+        }
+      }, error => {
+        // this.openPDFViewerCompoenet("base64String", moduleApp.appName);
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        console.log(error)
+      });
+
+    } else {
+      if (!moduleApp.fileName || moduleApp.fileName.length == 0) {
+        return;
+      }
+      this.isProcessing = true;
+      this.loaderService.display(true);
+      this.commonService.getPDFData(moduleApp.fileName).subscribe((res: ArrayBuffer) => {
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+        if (!res || res == null || res.byteLength == 0) {
+          this.loaderService.display(false);
+          this.translate.get("PDF not found").subscribe((res: string) => {
+            this.notificationService.failure(res);
+          })
+          return;
+        } else {
+          var base64String = this._arrayBufferToBase64(res as ArrayBuffer);
+          this.openPDFViewerCompoenet(base64String, moduleApp.appName);
+        }
+      }, error => {
+        // this.openPDFViewerCompoenet("base64String", moduleApp.appName);
+        setTimeout(() => {
+          this.spinnerService.hide();
+        }, 1000);
+      });
+
+    }
+
+  }
+
+  _arrayBufferToBase64(buffer) {
+    var binary = '';
+    var bytes = new Uint8Array(buffer);
+    var len = bytes.byteLength;
+    for (var i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
+
+
+
+  openPDFViewerCompoenet(data: any, title) {
+    const src = 'data:application/pdf;base64,' + data;
+    this.isProcessing = false;
+    let dialogRef = this.dialog.open(CustomPdfViewerComponent, {
+      maxWidth: '100%',
+      maxHeight: '100%',
+      width: '100%',
+      height: '100%',
+      data: {
+        pdfData: src,
+        title: title
+      }
+    });
+    dialogRef.afterClosed().subscribe(res => {
+      this.isProcessing = false;
+    });
+  }
+
+  getModuleAppDetails() {
+    this.commonService.getModuleAppList().subscribe(res => {
+      this.moduleAppList = res;
+      this.dataSource.data = this.moduleAppList;
+    }, error => {
+      console.log(error);
+    });
+  }
+
+  bin2string(array) {
+    var result = "";
+    for (var i = 0; i < array.length; ++i) {
+      result += (String.fromCharCode(array[i]));
+    }
+    return result;
+  }
+
+  navigateToUrl(row: ModuleApp) {
+    this.router.navigate(['moduledetail', row.id]);
+  }
+
+  getValue(type) {
+    switch (type) {
+      case this.CT.TNT_TYPE:
+        return this.CT.TNT;
+      case this.CT.BPO_TYPE:
+        return this.CT.BPO;
+      case this.CT.BIS_TYPE:
+        return this.CT.BIS;
+      case this.CT.TIS_TYPE:
+        return this.CT.TIS;
+    }
+  }
+
+  viewLogoDetails(request: ModuleApp) {
+    let dialogRef = this.dialog.open(LogoPreviewComponent, {
+      maxWidth: '100%',
+      maxHeight: '100%',
+      width: '100%',
+      height: '100%',
+      data: {
+        imageData: request.logoDetails,
+        title: request.appName,
+        mAppId: request.id
+      }
+    })
+  }
+
+}
+
+////////////////////////////////////////////////////////pdf
+<div class="row">
+    <div class="col-md-4">
+        <mat-form-field style="width: 90%;">
+            <input matInput #queryInp id="pdfQueryInput" type="text" placeholder="Search..." [value]="this.searchText"
+                (input)="onInputChange($event)" (keyup.enter)="onKeyDownHandler($event)">
+        </mat-form-field>
+        <!-- <input #queryInp id="pdfQueryInput" type="text" placeholder="Search..." [value]="this.searchText" (input)="applyFilter($event)" (keyup.enter)="applyFilter($event)"> -->
+    </div>
+    <div class="col-md-2 mt-1">
+        <mat-button-toggle-group #group="matButtonToggleGroup">
+            <mat-button-toggle>
+                <div class="row">
+                    <div class="col" style="border-right: black solid 1px;">
+                        <mat-icon id="asc" (click)="onAscClick()" class="mat-icon icon_arrow" matTooltip="Previous">
+                            arrow_drop_up</mat-icon>
+                    </div>
+                </div>
+            </mat-button-toggle>
+            <mat-button-toggle>
+                <div class="row">
+                    <div class="col">
+                        <mat-icon id="desc" (click)="onDescClick()" class="mat-icon icon_arrow" matTooltip="Next">
+                            arrow_drop_down</mat-icon>
+                    </div>
+                </div>
+            </mat-button-toggle>
+        </mat-button-toggle-group>
+    </div>
+    <div class="col-md-3 mt-2">
+        <button ion-button class="radius" (click)="zoom_in()">
+            <mat-icon class="mt-1">zoom_in</mat-icon>
+        </button>&nbsp;
+        <button ion-button class="radius" (click)="zoom_out()">
+            <mat-icon class="mt-1">zoom_out</mat-icon>
+        </button>
+    </div>
+    <div class="col-md-3" style="float: right;">
+        <button (click)="close()" class="btn" style="font-size:15px; background-color: lightsteelblue; float: right;">
+            Close
+        </button>
+    </div>
+</div>
+<div>
+    <div class="pdf-container">
+        <pdf-viewer [src]="pdfDocumentSrc" [rotation]="0" [original-size]="false" [show-all]="true"
+            [fit-to-page]="false" [zoom]="zoom_to" [zoom-scale]="'page-width'" [stick-to-page]="false"
+            [render-text]="true" [external-link-target]="'blank'" [autoresize]="true" [show-borders]="false"
+            class="viewer"></pdf-viewer>
+    </div>
+</div>
+
+///////////////////////csss
+
+p {
+    font-family: Lato;
+}
+
+.pdf-container {
+    display: flex;
+    border: solid 1px blue;
+}
+
+.viewer {
+    height: 100vh;
+    width: 100%;
+}
+
+.icon_arrow {
+    margin: 3px 13px 23px -9px !important;
+    font-size: 46px;
+}
+
+.mat-button-toggle-group-appearance-standard {
+    border-radius: 30px;
+}
+
+.mat-button-toggle-group-appearance-standard :hover {
+    background: none;
+}
+
+::ng-deep .mat-button-toggle-label-content {
+    line-height: 20px !important;
+}
+
+.mat-icon {
+    background-repeat: no-repeat;
+}
+
+.radius{
+    border-radius: 10px;
+}
+////////////////////////////////////////ts
+
+
+export class CustomPdfViewerComponent implements OnInit {
+
+  src;
+  title;
+  zoom_to = 1;
+
+  @ViewChild(PdfViewerComponent) private pdfComponent: PdfViewerComponent;
+  searchText = '';
+
+  constructor(public dialogRef: MatDialogRef<PdfViewerComponent>,
+    @Inject(MAT_DIALOG_DATA) data: any, private loaderService: LoaderService, private spinnerService: NgxSpinnerService) {
+    this.pdfDocumentSrc = data.pdfData;
+    this.title = data.title;
+    setTimeout(() => {
+      this.loaderService.display(false);
+    }, 1000);
+  }
+
+  applyFilter(event, findPrevious?) {
+    console.log(event);
+    const filterValue = event;
+    if (this.pdfComponent) { 
+      if (this.searchText !== filterValue) {
+        this.searchText = filterValue;
+        
+        this.pdfComponent.pdfFindController.executeCommand('find', {
+          query: this.searchText,
+          highlightAll: true
+        });
+      } else {
+        this.searchText = filterValue;
+        this.pdfComponent.pdfFindController.executeCommand('findagain', {
+          query: this.searchText,
+          highlightAll: true,
+          findPrevious: findPrevious ? this.searchText : undefined
+        });
+      }
+    }
+  }
+
+
+  onKeyDownHandler(event) {
+    this.applyFilter(event.target.value);
+  }
+
+  onDescClick() {
+    this.applyFilter(this.searchText);
+  }
+
+  onAscClick() {
+    this.applyFilter(this.searchText, true);
+  }
+
+  onInputChange(event) {
+    this.applyFilter(event.target.value);
+  }
+
+  pdfDocumentSrc: any;
+  page: number = 1;
+  totalPages: number = 0;
+  isLoaded: boolean = false;
+
+  afterLoadComplete(pdfData: any) {
+    this.totalPages = pdfData.numPages;
+    this.isLoaded = true;
+  }
+
+  nextPage() {
+    this.page++;
+  }
+
+  prevPage() {
+    this.page--;
+  }
+
+  ngOnInit(): void {
+  }
+
+  close() {
+    this.dialogRef.close();
+  }
+
+  zoom_in() {
+    this.zoom_to = this.zoom_to + 0.25;
+  }
+
+  zoom_out() {
+    if (this.zoom_to > 0.25) {
+      this.zoom_to = this.zoom_to - 0.25;
+    }
+  }
+
+}
+
+
