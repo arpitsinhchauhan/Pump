@@ -1,0 +1,395 @@
+///////////////////application.pro
+docs.file_path=C:\\Users\\Arpitsinh Chauhan\\Downloads\\
+
+
+////////////////////////////////////////////////////////////////back
+ @RequestMapping(value = "/pdfData", method = RequestMethod.POST)
+    public byte[] authenticateUser(@RequestParam("fileName") String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        if (!fileName.endsWith(".pdf") && !fileName.endsWith(".PDF")) {
+            fileName = fileName + ".pdf";
+        }
+        try (InputStream input = DBConfig.class.getClassLoader().getResourceAsStream("application.properties")) {
+            StringBuilder filterData = new StringBuilder();
+            Properties prop = new Properties();
+            prop.load(input);
+            filterData.append(prop.getProperty("docs.file_path"));
+            //File pdf = new File(filterData + fileName);
+
+            Path path = Paths.get(filterData.toString() + fileName);
+            byte[] pdf = Files.readAllBytes(path);
+
+            if (Objects.isNull(pdf)) {
+                return null;
+            }
+            return pdf;
+
+        } catch (IOException ex) {
+            logger.error("authenticateUser0>>>>>>>>", ex);
+        } catch (Exception ex) {
+            logger.error("authenticateUser1>>>>>>>>", ex);
+        }
+        return null;
+    }
+}
+
+
+////////////html
+<input type="date" [(ngModel)]="selectedDate">
+<button (click)="downloadReport()">Make API Call</button>
+
+///////////
+export class HomeComponent implements OnInit {
+
+  pdfSrc = "https://vadimdez.github.io/ng2-pdf-viewer/assets/pdf-test.pdf";
+
+  apiUrl = 'http://localhost:9999/all';
+  // productList: Map<String, String> | undefined;
+  productList: any = [];
+  data: any;
+  tableData: any[] = [];
+  searchTerm: string = '';
+  isProcessing: boolean | undefined;
+  pd: any;
+
+  // Product | undefined;
+  // { id: any; Email: any; Phone: any } | undefined
+  constructor(
+    private http: HttpClient,
+    private use: ServicesService,
+    private dialog: MatDialog,// private pipe: FilterPipe
+  ) { }
+
+
+
+
+
+
+  ngOnInit(): void {
+    // this.loadPdf('report_2024-04-17');
+    this.getdata();
+    this.dataSource = [
+      /* Your data goes here */
+    ];
+  }
+
+  getdata() {
+    this.http.get(this.apiUrl).subscribe((data) => {
+      this.productList = data;
+      console.log(this.productList);
+    });
+  }
+  deleteRow(id: number) {
+    console.log(id);
+    alert('Product deleted successfully');
+    this.use.deleteMember(id).subscribe((result) => {
+      this.productList = result;
+    });
+    location.reload();
+  }
+
+  Update(id: number) {
+    let current = this.productList.find((p: any) => {
+      // alert('Your data succefully Update');
+      return p.id = id;
+    });
+    console.log(current);
+  }
+
+  dataSource: any[] | undefined; // Your data source array
+  currentPage = 1; // Current page index
+  itemsPerPage = 5; // Number of items per page
+
+  applyFilter(filterValue: string) {
+    filterValue = filterValue.trim(); // Remove whitespace
+    filterValue = filterValue.toLowerCase(); // Datasource defaults to lowercase matches
+    this.productList.filter = filterValue;
+  }
+
+  // filteredItems: any[] = [];
+  // filterItems(searchTerm: string): void {
+  //   this.filteredItems = this.productList.filter(
+  //     (filterItems: { name: string | string[] }) => {
+  //       filterItems.name.includes(searchTerm);
+  //     }
+  //   );
+  // }
+
+  search(): void {
+    this.productList = this.productList.filter((item: { email: string }) =>
+      item.email.toLowerCase().includes(this.searchTerm.toLowerCase().trim())
+    );
+    if (this.searchTerm.toLowerCase() === '') {
+      location.reload();
+    }
+  }
+  reportUrl: string | undefined;
+
+
+  // fetchReport() {
+  //   const headers = new HttpHeaders({ 'Content-Type': 'application/pdf' });
+  //   this.http.get('http://localhost:8080/api/bill', { headers: headers, responseType: 'blob' })
+  //     .subscribe((response: any) => {
+  //       const file = new Blob([response], { type: 'application/pdf' });
+  //       this.reportUrl = URL.createObjectURL(file);
+  //     });
+  // }
+
+
+  selectedDate!: Date | null;
+
+  // Function to handle date selection
+  dateSelected(event: MatDatepickerInputEvent<Date>) {
+    this.selectedDate = event.value;
+  }
+ 
+  downloadReport(): void {
+    if (!this.selectedDate) {
+      console.error('Please select a date');
+      return;
+    }
+    // Make API call to download the PDF
+    this.isProcessing = true;
+    this.downloadPDF();
+  }
+
+  downloadPDF() {
+    // Construct the API URL with the selected date
+    const apiUrl = `http://localhost:9090/api/bill?date=${this.selectedDate}`;
+
+    // Make a GET request to the API endpoint to download the PDF
+    fetch(apiUrl, {
+      method: 'GET',
+    })
+      .then(response => {
+        // Check if the response is successful
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.blob(); // Extract the binary data from the response
+      })
+      .then(blob => {
+        // Create a blob URL for the PDF
+        const url = window.URL.createObjectURL(blob);
+
+        // Create a temporary <a> element to trigger the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this.selectedDate}.pdf`; // Set filename with date
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up by revoking the blob URL and removing the <a> element
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        this.openPdfViewer();
+      })
+      .catch(error => {
+        // Handle any errors
+        console.error('Error downloading PDF:', error);
+      });
+  }
+
+  openPDFViewerComponent(fileName: string, pdfData: any) {
+    const dialogRef = this.dialog.open(CustomPdfViewerComponent, {
+      maxWidth: '100%',
+      maxHeight: '100%',
+      width: '60%',
+      height: '50%',
+      data: {
+        pdfData: pdfData,
+        title: fileName,
+        selectedDate: this.selectedDate
+      }
+    });
+    // After the PDF viewer component is closed, initiate the download
+    dialogRef.afterClosed().subscribe(() => {
+      this.PDF(fileName, pdfData);
+    });
+  }
+
+  PDF(fileName: string, pdfData: any) {
+    // Create a blob from PDF data
+    const blob = new Blob([pdfData], { type: 'application/pdf' });
+
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = fileName;
+
+    // Append the link to the document and trigger a click event to start download
+    document.body.appendChild(link);
+    link.click();
+  }
+
+  openPdfViewer(){
+    let fileName1 = `${this.selectedDate}.pdf`;
+    this.use.getPDFData(fileName1).subscribe(
+      (response: ArrayBuffer) => {
+        if(response.byteLength!=0){
+          // Open the custom PDF viewer component with PDF data
+          this.openPDFViewerComponent(`${this.selectedDate}.pdf`, response);
+        }else{
+          this.openPdfViewer();
+        }
+      },
+      (error: any) => {
+        console.error('Error fetching PDF:', error);
+        this.isProcessing = false;
+      }
+    );
+  }
+
+}
+
+
+////////////////////////////
+<h1>pdf</h1>
+<div>
+    <!-- <button (click)="downloadPDF()">Download PDF</button> -->
+    <div class="pdf-container" style="width: 103%;">
+        <pdf-viewer [src]="pdfDocumentSrc" [rotation]="0" [original-size]="false" [show-all]="true"
+            [fit-to-page]="false" [zoom]="zoom_to" [zoom-scale]="'page-width'" [stick-to-page]="false"
+            [render-text]="true" [external-link-target]="'blank'" [autoresize]="true" [show-borders]="false"
+            class="viewer"></pdf-viewer>
+    </div>
+</div>  
+
+////////////////
+
+export class CustomPdfViewerComponent implements OnInit {
+
+  src: any;
+  title;
+  zoom_to = 1;
+
+  @ViewChild(CustomPdfViewerComponent) private pdfComponent: CustomPdfViewerComponent | undefined;
+  searchText = '';
+  pdfFindController: any;
+  data: any;
+  selectedDate: any;
+
+  constructor(public dialogRef: MatDialogRef<CustomPdfViewerComponent>,
+    @Inject(MAT_DIALOG_DATA) data: any, private spinnerService: NgxSpinnerService) {
+    this.pdfDocumentSrc = data.pdfData;
+    this.title = data.title;
+    this.selectedDate = data.selectedDate;
+    setTimeout(() => {
+      // this.loaderService.display(false);
+    }, 1000);
+  }
+
+  applyFilter(event: string, findPrevious?: boolean | undefined) {
+    console.log(event);
+    const filterValue = event;
+    if (this.pdfComponent) {
+      if (this.searchText !== filterValue) {
+        this.searchText = filterValue;
+
+        this.pdfComponent.pdfFindController.executeCommand('find', {
+          query: this.searchText,
+          highlightAll: true
+        });
+      } else {
+        this.searchText = filterValue;
+        this.pdfComponent.pdfFindController.executeCommand('findagain', {
+          query: this.searchText,
+          highlightAll: true,
+          findPrevious: findPrevious ? this.searchText : undefined
+        });
+      }
+    }
+  }
+
+
+  onKeyDownHandler(event: { target: { value: string; }; }) {
+    this.applyFilter(event.target.value);
+  }
+
+  onDescClick() {
+    this.applyFilter(this.searchText);
+  }
+
+  onAscClick() {
+    this.applyFilter(this.searchText, true);
+  }
+
+  onInputChange(event: { target: { value: string; }; }) {
+    this.applyFilter(event.target.value);
+  }
+
+  pdfDocumentSrc: any;
+  page: number = 1;
+  totalPages: number = 0;
+  isLoaded: boolean = false;
+
+  afterLoadComplete(pdfData: any) {
+    this.totalPages = pdfData.numPages;
+    this.isLoaded = true;
+  }
+
+  nextPage() {
+    this.page++;
+  }
+
+  prevPage() {
+    this.page--;
+  }
+
+  ngOnInit(): void {
+  }
+
+  close() {
+    this.dialogRef.close();
+  }
+
+  zoom_in() {
+    this.zoom_to = this.zoom_to + 0.25;
+  }
+
+  zoom_out() {
+    if (this.zoom_to > 0.25) {
+      this.zoom_to = this.zoom_to - 0.25;
+    }
+  }
+  // downloadPDF() {
+
+  //   // Construct the API URL with the selected date
+  //   const apiUrl = `http://localhost:9090/api/bill?date=${this.selectedDate}`;
+
+  //   // Make a GET request to the API endpoint to download the PDF
+  //   fetch(apiUrl, {
+  //     method: 'GET',
+  //   })
+  //     .then(response => {
+  //       // Check if the response is successful
+  //       if (!response.ok) {
+  //         throw new Error('Network response was not ok');
+  //       }
+  //       return response.blob(); // Extract the binary data from the response
+  //     })
+  //     .then(blob => {
+  //       // Create a blob URL for the PDF
+  //       const url = window.URL.createObjectURL(blob);
+
+  //       // Create a temporary <a> element to trigger the download
+  //       const a = document.createElement('a');
+  //       a.href = url;
+  //       a.download = `${this.selectedDate}.pdf`; // Set filename with date
+  //       document.body.appendChild(a);
+  //       a.click();
+
+  //       // Clean up by revoking the blob URL and removing the <a> element
+  //       window.URL.revokeObjectURL(url);
+  //       document.body.removeChild(a);
+  //     })
+  //     .catch(error => {
+  //       // Handle any errors
+  //       console.error('Error downloading PDF:', error);
+  //     });
+  // }
+
+}
+
