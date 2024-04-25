@@ -390,6 +390,14 @@ export class CustomPdfViewerComponent implements OnInit {
   //       console.error('Error downloading PDF:', error);
   //     });
   // }
-
 }
+
+getPDFData(fileName: string | number | boolean): Observable<any> {
+    const param = new HttpParams().set("fileName", fileName);
+    return this.http.post('http://localhost:9090/pdfData', null, {
+      responseType: "arraybuffer",
+      params:param,
+      headers: new HttpHeaders().append("Content-Type", "application/pdf"),
+    });
+  }
 
