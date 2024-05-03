@@ -445,62 +445,37 @@ public class DBConfig {
 
 }
 
- @PostMapping("/kharch")
-    public ResponseEntity<String> saveExpense(@RequestBody Map<String, Object> requestData) {
-        String date = (String) requestData.get("date");
-        List<Map<String, Object>> expenses = (List<Map<String, Object>>) requestData.get("expenses");
-
-        for (Map<String, Object> expense : expenses) {
-            kharch kharch = new kharch();
-            kharch.setDate(date); // Set the date for each kharch object
-            kharch.setNotes((String) expense.get("notes"));
-            kharch.setPrice((String) expense.get("price"));
-            kharchRepository.save(kharch);
+  @PostMapping("/kharch")
+    public void receiveExpenses(@RequestBody List<kharch> expenses) {
+        for (kharch expense : expenses) {
+            expense.setDate(expense.getDate()); // Set the date
+            expense.setNotes(expense.getNotes()); // Set the notes
+            expense.setPrice(expense.getPrice());
+            System.out.println(expense);
+            kharchRepository.save(expense);
         }
-
-        return ResponseEntity.ok("Data saved successfully");
     }
+
  total = 0;
   selectedDate!: Date | null;
   purchaDipStockseDetails: any = {
-    date: null
+    date: ''
   };
-  row = [
-    {
-      id: '',
-      date: '',
-      notes: '',
-      price: '',
-    },
-  ];
+  // row = [
+  //   {
+  //     id: '',
+  //     date: this.purchaDipStockseDetails.date,
+  //     notes: '',
+  //     price: '',
+  //   },
+  // ];
 
   constructor(private http: HttpClient) {
   }
 
   ngOnInit() {
-    this.row[0].id = '1';
+    this.row[0].idkharch = '1';
   }
-
-  addTable() {
-    console.log(this.row.length);
-    const obj = {
-      id: '',
-      date: this.purchaDipStockseDetails.date,
-      notes: '',
-      price: '',
-    };
-
-    this.row.push(obj);
-    this.row[this.row.length - 1].id = this.row.length.toString();
-  }
-
-  deleteRow(x: number) {
-    var delBtn = confirm(' Do you want to delete ?');
-    if (delBtn == true) {
-      this.row.splice(x, 1);
-    }
-  }
-
   order() {
     const data = {
       // date: this.purchaDipStockseDetails.date,
@@ -510,12 +485,32 @@ public class DBConfig {
 
 
     // Send data to backend
-    this.http.post<any>('http://localhost:9090/kharch', data)
+    this.http.post<any>('http://localhost:9090/kharch', this.row)
       .subscribe(response => {
         // const responseData = response.expenses;
         this.purchaDipStockseDetails.date = null;
         this.row = [];
       });
   }
+  purchaseDetails: any = {
+    date: '' // You can set default date if needed
+  };
+  row: any[] = [];
+  lastRowId: number = 0;
+
+  addTable() {
+    // Add a new row to the table
+    this.lastRowId++;
+    // this.row.push({ id: '', date: this.purchaDipStockseDetails.date, notes: '', price: '' });
+    const newRow = { idkharch: this.lastRowId,  date: this.purchaDipStockseDetails.date,notes: '', price: '' };
+    this.row.push(newRow);
+  }
+
+  deleteRow(index: number) {
+    // Remove a row from the table
+    this.row.splice(index, 1);
+  }
+
+
 
 }
