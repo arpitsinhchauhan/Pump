@@ -510,7 +510,156 @@ public class DBConfig {
     // Remove a row from the table
     this.row.splice(index, 1);
   }
-
-
-
 }
+
+/////////////////////jama baki componenet
+<input type="date" [(ngModel)]="purchaDipStockseDetails.date">
+
+<div style="display:inline;width:100%">
+    <div style="display:inline;">
+        <button (click)="addTable()">Add Row</button>
+    </div>
+    <div style="display:inline;margin-left:45%">
+        <button (click)="order()">Order</button>
+    </div>
+</div>
+<br />
+<table class="style">
+    <tr>
+        <th style="max-width:60px">RowId</th>
+        <th>Sender</th>
+        <th>Receiver</th>
+        <th>Amount</th>
+        <th></th>
+    </tr>
+    <tr *ngFor="let item of row; let i = index">
+        <td><input type="text" [(ngModel)]="item.idkharch" /></td>
+        <td><input type="text" [(ngModel)]="item.sender" /></td>
+        <mat-form-field style="margin-top: 4%; background-color: rgb(252, 252, 252);">
+            <mat-label>Receiver</mat-label>
+            <mat-select  [(ngModel)]="item.receiver">
+                <mat-option *ngFor="let name of names" [value]="name">
+                    {{ name }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <td><input type="text" [(ngModel)]="item.amount" /></td>
+        <td>
+            <button (click)="deleteRow(i)"><i class="fa fa-trash"></i></button>
+        </td>
+    </tr>
+    <tr>
+        GrandTotal:
+        <input type="text" />
+    </tr>
+</table>
+
+export class SendmoneyComponent {
+  total = 0;
+  selectedDate!: Date | null;
+  purchaDipStockseDetails: any = {
+    date: ''
+  };
+  // row = [
+  //   {
+  //     id: '',
+  //     date: this.purchaDipStockseDetails.date,
+  //     notes: '',
+  //     price: '',
+  //   },
+  // ];
+
+  constructor(@Inject(MAT_DIALOG_DATA) public data: any,
+    private http: HttpClient,
+    private use: ServicesService,
+    private dialog: MatDialog,
+  ) {
+    console.log(data);
+
+  }
+
+
+  ngOnInit() {
+    this.getdata();
+    // this.row[0].idkharch = '1';
+  }
+  names: any[] = [];
+  getdata() {
+    this.http.get<any>('http://localhost:9090/Customerall')
+      .subscribe(response => {
+        this.names = Object.values(response).map((item: any) => item.name);
+      });
+  }
+
+
+
+  // addTable() {
+  //   console.log(this.row.length);
+  //   const obj = {
+  //     id: '',
+  //     date: this.purchaDipStockseDetails.date,
+  //     notes: '',
+  //     price: '',
+  //   };
+
+  //   this.row.push(obj);
+  //   this.row[this.row.length - 1].id = this.row.length.toString();
+  // }
+
+  // deleteRow(x: number) {
+  //   var delBtn = confirm(' Do you want to delete ?');
+  //   if (delBtn == true) {
+  //     this.row.splice(x, 1);
+  //   }
+  // }
+
+  order() {
+    const data = {
+      // date: this.purchaDipStockseDetails.date,
+      expenses: this.row
+    };
+
+    console.log(this.row);
+
+
+    // Send data to backend
+    this.http.post<any>('http://localhost:9090/jamabakiadd', this.row)
+      .subscribe(response => {
+        // const responseData = response.expenses;
+        this.purchaDipStockseDetails.date = null;
+        this.row = [];
+      });
+  }
+  purchaseDetails: any = {
+    date: '' // You can set default date if needed
+  };
+  row: any[] = [];
+  lastRowId: number = 0;
+
+  addTable() {
+    // Add a new row to the table
+    this.lastRowId++;
+    // this.row.push({ id: '', date: this.purchaDipStockseDetails.date, notes: '', price: '' });
+    const newRow = { idkharch: this.lastRowId, date: this.purchaDipStockseDetails.date, sender: this.data.name, receiver: this.names, amount: '' };
+    this.row.push(newRow);
+  }
+
+  deleteRow(index: number) {
+    // Remove a row from the table
+    this.row.splice(index, 1);
+  }
+  dataSource = [
+
+  ];
+}
+  @PostMapping("/jamabakiadd")
+    public void receivejamabakiadd(@RequestBody List<jamabaki> expenses) {
+        for (jamabaki expense : expenses) {
+            expense.setDate(expense.getDate()); // Set the date
+            expense.setSender(expense.getSender()); // Set the notes
+            expense.setReceiver(expense.getReceiver());
+            expense.setAmount(expense.getAmount());
+            System.out.println(expense.toString());
+            JamabakiRepository.save(expense);
+        }
+    }
