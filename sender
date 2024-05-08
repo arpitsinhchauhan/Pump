@@ -88,7 +88,20 @@
             parameters.put("baki", sumDatabaki);
 
             List<Object[]> kharch = getKharchData();
-            parameters.put("kharch", kharch);
+            List<Double> sumDatakharch = new ArrayList<>();
+//            List<String> sumDatabaki = new ArrayList<>();
+            for (int i = 0; i < kharch.size(); i++) {
+                Object[] obj = kharch.get(i);
+                if (obj[0] != null && obj[0].equals(formattedDate)) {
+                    // Assuming the sum data is stored at index 1 in the array
+                    Object sumData = obj[1];
+                    if (sumData instanceof Double) {
+                        // Check if sumData is of type Double before adding it to the list
+                        sumDatakharch.add((Double) sumData);
+                    }
+                }
+            }
+            parameters.put("kharch", sumDatakharch);
             JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource());
             outputStream = new ByteArrayOutputStream();
             JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
@@ -180,9 +193,31 @@
 
     @GetMapping("/kharch")
     public List<Object[]> getKharchData() {
-        // Call the repository method to retrieve date and total price data
         List<Object[]> dateAndTotalPriceList = kharchRepository.findDateAndTotalPrice();
-        return dateAndTotalPriceList;
+        List<Object[]> formattedDataList = new ArrayList<>();
+        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat outputFormat = new SimpleDateFormat("dd/MM/yyyy");
+        for (Object[] row : dateAndTotalPriceList) {
+            try {
+                // Assuming the first element is the date
+                Date date = inputFormat.parse(row[0].toString());
+                String formattedDate = outputFormat.format(date);
+                // Replace the date in the row with the formatted date
+                row[0] = formattedDate;
+            } catch (ParseException e) {
+                e.printStackTrace();
+                // Handle parsing exception if necessary
+            }
+
+            formattedDataList.add(row);
+        }
+
+        // Print the formatted data if needed
+        for (Object[] row : formattedDataList) {
+            System.out.println("Date: " + row[0] + ", Total Price: " + row[1]);
+        }
+
+        return formattedDataList;
     }
     ////////////////////////////////////////////////
 
