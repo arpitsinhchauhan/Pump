@@ -1,0 +1,209 @@
+@GetMapping(value = "/api/bill", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> getBill(@RequestParam("date") @DateTimeFormat(pattern = "yyyy-MM-dd") Date date) throws IOException, JRException {
+        List<Object[]> data = Table1Repository.getDataForDate(date); // Fetch data based on the provided date
+        //pendingamout //given amount
+        byte[] reportBytes = generateReport(data, date); // Pass fetched data to the generateReport method
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(reportBytes);
+    }
+
+    private byte[] generateReport(List<Object[]> data, Date date) throws IOException, JRException {
+        ByteArrayOutputStream outputStream = null;
+        try {
+            JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile("D:/report1.jasper");
+
+            // Create a map to hold the parameters (including the fetched data)
+            Map<String, Object> parameters = new HashMap<>();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+            String formattedDate = dateFormat.format(date);
+            parameters.put("Date", formattedDate);
+            String jsonData = new ObjectMapper().writeValueAsString(data);
+//            if (!data.isEmpty() && data.get(0).length > 0) {
+//                parameters.put("prate", data.get(0)[0]);
+//            } else {
+//                // Handle case when data is empty or first array has no elements
+//                parameters.put("prate", null); // Or provide a default value
+//            }
+            parameters.put("pltr", data.get(0)[2]);
+            parameters.put("prate", data.get(0)[3]);
+            parameters.put("dltr", data.get(0)[4]);
+            parameters.put("drate", data.get(0)[5]);
+            parameters.put("oprice", data.get(0)[7]);
+
+            double psum = 0.0;
+            double dsum = 0.0;
+
+// Assuming data.get(0) exists and is a double array with at least 8 elements
+            if (data.get(0).length >= 8) {
+                // Extract values from data array and put them into parameters map
+                parameters.put("pltr", Double.parseDouble((String) data.get(0)[2]));
+                parameters.put("prate", Double.parseDouble((String) data.get(0)[3]));
+                parameters.put("dltr", Double.parseDouble((String) data.get(0)[4]));
+                parameters.put("drate", Double.parseDouble((String) data.get(0)[5]));
+
+                // Calculate the sum of the values using a loop
+                for (int i = 2; i <= 3; i++) {
+                    psum += Double.parseDouble((String) data.get(0)[i]);
+                }
+                for (int i = 4; i <= 5; i++) {
+                    dsum += Double.parseDouble((String) data.get(0)[i]);
+                }
+            }
+
+            parameters.put("ptotal", psum);
+            parameters.put("dtotal", dsum);
+            double oprice = Double.parseDouble((String) data.get(0)[7]);
+
+            double mtotal = psum + dsum + oprice;
+            parameters.put("mtotal", mtotal);
+//            List<Map<String, Object>> jama = getSumAmountAndDateBySenderPump();
+//            parameters.put("jama", jama);
+//            List<Map<String, Object>> receiver = getJamabakiByReceiverPump();
+//            parameters.put("baki", receiver);
+            List<Map<String, Object>> jama = getSumAmountAndDateBySenderPump();
+            List<String> sumDataList = new ArrayList<>();
+            for (int i = 0; i < jama.size(); i++) {
+                Map<String, Object> obj = jama.get(i);
+                if (obj.values().contains(formattedDate)) {
+                    Object sumData = obj.get("sum");
+                    if (sumData != null && sumData instanceof String) {
+                        // Check if sumData is not null and of type String before adding it to the list
+                        sumDataList.add((String) sumData);
+                    }
+                }
+            }
+            parameters.put("jama", sumDataList);
+
+            List<Map<String, Object>> receiver = getJamabakiByReceiverPump();
+            List<String> sumDatabaki = new ArrayList<>();
+            for (int i = 0; i < receiver.size(); i++) {
+                Map<String, Object> obj = receiver.get(i);
+                if (obj.values().contains(formattedDate)) {
+                    Object sumData = obj.get("sum");
+                    if (sumData != null && sumData instanceof String) {
+                        // Check if sumData is not null and of type String before adding it to the list
+                        sumDatabaki.add((String) sumData);
+                    }
+                }
+            }
+            parameters.put("baki", sumDatabaki);
+
+            List<Object[]> kharch = getKharchData();
+            parameters.put("kharch", kharch);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource());
+            outputStream = new ByteArrayOutputStream();
+            JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
+        } catch (JRException ex) {
+            logger.error("some error occurred ::", ex);
+        }
+
+        return outputStream.toByteArray();
+    }
+ 
+ @PostMapping("/jamabakiadd")
+    public void receivejamabakiadd(@RequestBody List<jamabaki> expenses) {
+        for (jamabaki expense : expenses) {
+            expense.setDate(expense.getDate()); // Set the date
+            expense.setSender(expense.getSender()); // Set the notes
+            expense.setReceiver(expense.getReceiver());
+            expense.setAmount(expense.getAmount());
+            System.out.println(expense.toString());
+            JamabakiRepository.save(expense);
+        }
+    }
+ 
+ @GetMapping("/jamabaki/senderPump")
+    public List<Map<String, Object>> getSumAmountAndDateBySenderPump() {
+        List<Object[]> result = JamabakiRepository.sumAmountAndDateBySenderContainingIgnoreCase("Pump");
+
+        // Prepare a list to hold the results
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        // Create a SimpleDateFormat instance with the desired format
+        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd"); // Adjust the pattern based on your actual date format
+        SimpleDateFormat outputFormat = new SimpleDateFormat("dd/MM/yyyy");
+
+        // Iterate through the fetched data
+        for (Object[] row : result) {
+            Map<String, Object> entry = new HashMap<>();
+            try {
+                // Assuming the date is stored in the first column as a string
+                String dateString = (String) row[0];
+                // Parse the date string into a Date object
+                Date date = inputFormat.parse(dateString);
+                // Format the date using the output format
+                String formattedDate = outputFormat.format(date);
+                entry.put("date", formattedDate);
+                entry.put("sum", row[1]); // Assuming the sum of amounts is stored in the second column
+                response.add(entry);
+            } catch (ParseException e) {
+                // Handle parsing exception
+                e.printStackTrace();
+                // Skip this row if parsing fails
+                continue;
+            }
+        }
+
+        return response;
+    }
+
+    @GetMapping("/jamabaki/receiverPump")
+    public List<Map<String, Object>> getJamabakiByReceiverPump() {
+        List<Object[]> result = JamabakiRepository.sumAmountAndDateByReceiverContainingIgnoreCase("Pump");
+
+        // Prepare a list to hold the results
+        List<Map<String, Object>> response = new ArrayList<>();
+        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat outputFormat = new SimpleDateFormat("dd/MM/yyyy");
+        // Iterate through the fetched data
+        for (Object[] row : result) {
+            Map<String, Object> entry = new HashMap<>();
+            try {
+                // Assuming the date is stored in the first column as a string
+                String dateString = (String) row[0];
+                // Parse the date string into a Date object
+                Date date = inputFormat.parse(dateString);
+                // Format the date using the output format
+                String formattedDate = outputFormat.format(date);
+                entry.put("date", formattedDate);
+                entry.put("sum", row[1]); // Assuming the sum of amounts is stored in the second column
+                response.add(entry);
+            } catch (ParseException e) {
+                // Handle parsing exception
+                e.printStackTrace();
+                // Skip this row if parsing fails
+                continue;
+            }
+        }
+
+        return response;
+    }
+
+    @GetMapping("/kharch")
+    public List<Object[]> getKharchData() {
+        // Call the repository method to retrieve date and total price data
+        List<Object[]> dateAndTotalPriceList = kharchRepository.findDateAndTotalPrice();
+        return dateAndTotalPriceList;
+    }
+    ////////////////////////////////////////////////
+
+    @Repository
+public interface jamabakiRepository extends JpaRepository<jamabaki, Integer> {
+
+    @Query("SELECT j.date, SUM(j.amount) FROM jamabaki j WHERE j.sender LIKE %:sender% GROUP BY j.date")
+    List<Object[]> sumAmountAndDateBySenderContainingIgnoreCase(@Param("sender") String sender);
+
+    @Query("SELECT j.date, SUM(j.amount) FROM jamabaki j WHERE j.receiver LIKE %:receiver% GROUP BY j.date")
+    List<Object[]> sumAmountAndDateByReceiverContainingIgnoreCase(@Param("receiver") String receiver);
+//    @Query("SELECT SUM(j.amount) FROM jamabaki j WHERE j.receiver LIKE %:receiver%")
+//    Double sumAmountByReceiverContainingIgnoreCase(@Param("receiver") String receiver);
+
+//    @Query("SELECT j FROM jamabaki j WHERE j.receiver LIKE %:receiver%")
+//    List<jamabaki> findByReceiverContainingIgnoreCase(@Param("receiver") String receiver);
+////////////////////////////////////////
+@Repository
+public interface kharchRepository extends JpaRepository<kharch, Integer> {
+
+    @Query(value = "SELECT date, SUM(price) AS total_price FROM kharch GROUP BY date", nativeQuery = true)
+    List<Object[]> findDateAndTotalPrice();
+}
+}
