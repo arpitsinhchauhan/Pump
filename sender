@@ -261,3 +261,57 @@ public interface kharchRepository extends JpaRepository<kharch, Integer> {
 //////////////
 @Query("SELECT d FROM dailytotal d WHERE d.date BETWEEN :startDate AND :endDate")
     List<dailytotal> findByDateBetween(String startDate, String endDate);
+
+////////////
+<input type="date" [(ngModel)]="startDate">
+<input type="date" [(ngModel)]="endDate">
+<button (click)="fetchData()">Fetch Data</button>
+<div *ngFor="let dailyTotal of dailyTotals">
+    <p>Date: {{ dailyTotal.date }}</p>
+    <p>Total RS: {{ dailyTotal.total_rs }}</p>
+</div>
+<p>Total Sum of Total RS: {{ getTotalRsSum() }}</p>
+
+//////////////////////
+dailyTotals: DailyTotal[] = [];
+  startDate: string = ''; // Initialize to empty string
+  endDate: string = '';
+
+ fetchData(): void {
+    if (!this.startDate || !this.endDate) {
+      // Handle case when either start or end date is not selected
+      return;
+    }
+    const formattedStartDate = this.formatDate(this.startDate);
+    const formattedEndDate = this.formatDate(this.endDate);
+
+    this.use.getDailyTotals(formattedStartDate, formattedEndDate)
+      .subscribe(data => {
+        this.dailyTotals = data;
+      });
+  }
+  formatDate(date: string): string {
+    // Split the date string by '-' to get day, month, and year
+    const parts = date.split('-');
+    if (parts.length !== 3) {
+      // Invalid date format
+      console.error('Invalid date format.');
+      return '';
+    }
+
+    // Re-arrange the parts and join them with '/'
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+
+  getTotalRsSum(): number {
+    return this.dailyTotals.reduce((sum, dailyTotal) => sum + dailyTotal.total_rs, 0);
+  }
+
+///
+
+export interface DailyTotal {
+    date: string;
+    total_rs: number;
+  }
+  
