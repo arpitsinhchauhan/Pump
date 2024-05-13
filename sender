@@ -242,3 +242,9 @@ public interface kharchRepository extends JpaRepository<kharch, Integer> {
     List<Object[]> findDateAndTotalPrice();
 }
 }
+
+
+ dailytotal dailyTotal = new dailytotal();
+            dailyTotal.setDate(formattedDate);
+            dailyTotal.setTotal_rs(mtotal);
+            DailytotalRepository.save(dailyTotal);
