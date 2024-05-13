@@ -314,4 +314,14 @@ export interface DailyTotal {
     date: string;
     total_rs: number;
   }
-  
+  ////////////////
+ private apiUrladd = 'http://localhost:9090/dateRange';
+
+
+  getDailyTotals(startDate: string, endDate: string): Observable<DailyTotal[]> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+
+    return this.http.get<DailyTotal[]>(this.apiUrladd, { params });
+  }
