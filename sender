@@ -248,3 +248,16 @@ public interface kharchRepository extends JpaRepository<kharch, Integer> {
             dailyTotal.setDate(formattedDate);
             dailyTotal.setTotal_rs(mtotal);
             DailytotalRepository.save(dailyTotal);
+///////////////////
+  @GetMapping("/dateRange")
+    public ResponseEntity<List<dailytotal>> getEntriesWithinDateRange(
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+
+        List<dailytotal> entries = DailytotalRepository.findByDateBetween(startDate, endDate);
+
+        return new ResponseEntity<>(entries, HttpStatus.OK);
+    }
+//////////////
+@Query("SELECT d FROM dailytotal d WHERE d.date BETWEEN :startDate AND :endDate")
+    List<dailytotal> findByDateBetween(String startDate, String endDate);
