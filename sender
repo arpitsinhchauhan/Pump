@@ -242,12 +242,6 @@ public interface kharchRepository extends JpaRepository<kharch, Integer> {
     List<Object[]> findDateAndTotalPrice();
 }
 }
-
-
- dailytotal dailyTotal = new dailytotal();
-            dailyTotal.setDate(formattedDate);
-            dailyTotal.setTotal_rs(mtotal);
-            DailytotalRepository.save(dailyTotal);
 ///////////////////
   @GetMapping("/dateRange")
     public ResponseEntity<List<dailytotal>> getEntriesWithinDateRange(
@@ -325,3 +319,19 @@ export interface DailyTotal {
 
     return this.http.get<DailyTotal[]>(this.apiUrladd, { params });
   }
+//////////////////////////
+List<dailytotal> existingRecords = DailytotalRepository.findByDate(formattedDate);
+
+            if (existingRecords.isEmpty()) {
+                // If no record exists for the date, create a new one and save it
+                dailytotal dailyTotal = new dailytotal();
+                dailyTotal.setDate(formattedDate);
+                dailyTotal.setTotal_rs(mtotal); // Assuming this is how you get the total from DTO
+                DailytotalRepository.save(dailyTotal);
+            } else {
+                // If a record already exists for the date, you may choose to handle this case as needed
+                // Here, I'm just logging a message to indicate that the data was not saved
+                System.out.println("Data for date " + formattedDate + " already exists. Skipping save operation.");
+            }
+///////////////////////
+List<dailytotal> findByDate(String date);
