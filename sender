@@ -335,3 +335,178 @@ List<dailytotal> existingRecords = DailytotalRepository.findByDate(formattedDate
             }
 ///////////////////////
 List<dailytotal> findByDate(String date);
+
+////////////////////////////////////////
+<button (click)="openComponent() ">Open Table</button>
+<input type="date" [(ngModel)]="date">
+<div class="box">
+    <div class="container">
+        <img class="logo" src="">
+        <form #userForm="ngForm" (ngSubmit)="getdata(userForm.value)" class="input-field">
+            <div class="input-row">
+                <input type="text" class="input" placeholder="Pdip" [(ngModel)]="pdip" name="pdip">
+                <input type="text" class="input" placeholder="Ptotal" [(ngModel)]="ptotal" name="ptotal">
+                <input type="text" class="input" placeholder="pvalue" ngModel name="pvalue">
+            </div>
+            <div class="input-row">
+                <input type="text" class="input" placeholder="Ddip" [(ngModel)]="dieseldip" name="dieseldip">
+                <input type="text" class="input" placeholder="Dtotal" [(ngModel)]="dtotal" name="dtotal">
+                <input type="text" class="input" placeholder="Dvalue" ngModel name="dvalue">
+            </div>
+            <button class="add"> Add Member </button>
+        </form>
+    </div>
+</div>
+
+
+////////////////////
+export class DipReportComponent {
+  // selectedDate!: Date | null;
+  date: string = '';
+  selectedItems: any[] = [];
+  ptotal: string = ''; // Binding total values to these variables
+  dtotal: string = '';
+  pdip: string = ''; // Binding id values to these variables
+  dieseldip: string = '';
+  constructor(
+    private http: HttpClient,
+    private use: ServicesService,
+    private dialog: MatDialog,// private pipe: FilterPipe
+  ) { }
+  ngOnInit(): void {
+    this.use.selectedItems$.subscribe(items => {
+      this.selectedItems = items;
+      console.log('Received selected items:', this.selectedItems);
+      // Handle the received data here
+      this.calculateTotalValues();
+      this.assignIdValues();
+    });
+  }
+  assignIdValues() {
+    // Ensure that selectedItems has at least two elements
+    if (this.selectedItems.length > 1) {
+      this.pdip = this.selectedItems[0].id;
+      this.dieseldip = this.selectedItems[1].id;
+    } else {
+      this.pdip = ''; // Reset pdip if there are not enough elements
+      this.dieseldip = ''; // Reset dieseldip if there are not enough elements
+    }
+  }
+
+  // getAll() {
+  //   this.http.get('http://localhost:9090/dipvalue').subscribe((data) => {
+  //     console.log(data);
+  //   });
+  // }
+
+  getdata(data: any) {
+    data.date = this.date;
+
+    console.info(data);
+    this.use.addDip(data).subscribe((res) => {
+    });
+    //   console.info(data);
+    //   if (data) {
+    //     alert('Product is succefully add');
+    //   }
+    //   // location.reload();
+    //   // alert('Product Add');
+  }
+  calculateTotalValues() {
+    // Ensure that selectedItems has at least two elements
+    if (this.selectedItems.length > 1) {
+      this.ptotal = this.selectedItems[0].value;
+      this.dtotal = this.selectedItems[1].value;
+    } else {
+      this.ptotal = ''; // Reset ptotal if there are not enough elements
+      this.dtotal = ''; // Reset dtotal if there are not enough elements
+    }
+  }
+
+  openComponent() {
+    const dialogRef = this.dialog.open(DipTableComponent, {
+      maxWidth: '100%',
+      maxHeight: '100%',
+      width: '60%',
+      height: '50%',
+    });
+  }
+}
+/////////////////////////////////
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<div class="product-list">
+    <table>
+        <tr>
+            <th>Id</th>
+            <th scope="col">value</th>
+            <th scope="col">number</th>
+            <th><input type="checkbox" (change)="toggleSelectAll($event)"></th>
+        </tr>
+        <!-- | searchfilter: searchTerm -->
+        <tr *ngFor="let items of productList">
+            <!-- <td *ngFor="let items of productList">{{items.Id}}</td>
+            <td *ngFor="let items of productList">{{items.Email}}</td>
+            <td *ngFor="let items of productList">{{items.Phone}}</td> -->
+            <td>{{items.id}}</td>
+            <td>{{items.value}}</td>
+            <td>{{items.number}}</td>
+            <td><input type="checkbox" [(ngModel)]="items.selected"></td>
+
+            <!-- <td>
+                <a (click)="send(items.id)">
+                    <mat-icon>send</mat-icon>
+                </a>
+            </td> -->
+        </tr>
+        <button (click)="sendSelected()">send</button>
+    </table>
+</div>
+
+////////////////////////////
+export class DipTableComponent {
+  productList: any = [];
+  constructor(
+    private http: HttpClient,
+    private use: ServicesService,
+    private dialog: MatDialog,// private pipe: FilterPipe
+  ) { }
+  ngOnInit(): void {
+    // this.loadPdf('report_2024-04-17');
+    // this.fetchData();
+    this.getAll();
+  }
+  getAll() {
+    this.http.get('http://localhost:9090/dipvalue').subscribe((data) => {
+      this.productList = data;
+      console.log(data);
+    });
+  }
+  toggleSelectAll(event: any) {
+    const isChecked = event.target.checked;
+    this.productList.forEach((item: { selected: any; }) => item.selected = isChecked);
+  }
+
+  sendSelected() {
+    const selectedItems = this.productList.filter((item: { selected: any; }) => item.selected);
+    console.log('Selected Items:', selectedItems);
+    this.use.updateSelectedItems(selectedItems);
+  }
+  // send(id: number) {
+  //   let current = this.productList.find((p: any) => {
+  //     // alert('Your data succefully Update');
+  //     return p.id = id;
+  //   }); 
+  //   if (current) {
+  //     this.use.updateData(current);
+  //     console.log('Data sent:', current);
+  //   }
+  // }
+
+}
+/////////////////////////////
+ private selectedItemsSource = new BehaviorSubject<any[]>([]);
+  selectedItems$ = this.selectedItemsSource.asObservable();
+
+  updateSelectedItems(items: any[]) {
+    this.selectedItemsSource.next(items);
+  }
