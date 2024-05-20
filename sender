@@ -510,3 +510,116 @@ export class DipTableComponent {
   updateSelectedItems(items: any[]) {
     this.selectedItemsSource.next(items);
   }
+
+
+///////////////////////////////
+ @GetMapping("/transactions")
+    public List<jamabaki> getTransactions(@RequestParam String name) {
+        return JamabakiRepository.findBySenderOrReceiver(name, name);
+    }
+///////////////////////
+List<jamabaki> findBySenderOrReceiver(String sender, String receiver);
+
+
+///////////////
+<div>
+    <h2>Select Sender/Receiver</h2>
+    <mat-form-field appearance="fill">
+        <mat-label>Select Sender/Receiver</mat-label>
+        <mat-select [(ngModel)]="name" (selectionChange)="fetchTransactions()">
+            <mat-option *ngFor="let name of names" [value]="name">
+                {{ name }}
+            </mat-option>
+        </mat-select>
+    </mat-form-field>
+</div>
+<!-- <div *ngIf="transactions">
+    <h2>Sent Transactions:</h2>
+    <ul>
+      <li *ngFor="let transaction of transactions.sent">{{ transaction | json }}</li>
+    </ul>
+    <h2>Received Transactions:</h2>
+    <ul>
+      <li *ngFor="let transaction of transactions.received">{{ transaction | json }}</li>
+    </ul>
+  </div> -->
+
+<table>
+    <tr>
+        <th scope="col">Date</th>
+        <th scope="col">Name</th>
+        <th scope="col">SenderAmount</th>
+        <th scope="col">ReceiveAmount</th>
+        <!-- <th scope="col">Amount</th> -->
+    </tr>
+    <!-- | searchfilter: searchTerm -->
+        <!-- <td *ngFor="let items of productList">{{items.Id}}</td>
+        <td *ngFor="let items of productList">{{items.Email}}</td>
+        <td *ngFor="let items of productList">{{items.Phone}}</td> -->
+    <tr *ngFor="let items of productList">
+        <td>{{items.date}}</td>
+        <td>{{name}}</td>
+        <td *ngIf="this.name === items.sender; else receiveAmount">{{ items.amount }}</td>
+        <ng-template #receiveAmount>
+          <td>-</td>
+        </ng-template>
+        <td *ngIf="this.name === items.receiver; else senderAmount">{{ items.amount }}</td>
+        <ng-template #senderAmount>
+          <td>-</td>
+        </ng-template>
+        <!-- <td>{{items.receiver}}</td> -->
+        <!-- <td>{{items.amount}}</td> -->
+    </tr>
+</table>
+
+
+<!-- <pdf-viewer [src]="pdfSrc" [render-text]="true" [original-size]="false"
+style="width: 400px; height: 500px"></pdf-viewer> -->
+
+////////////////////////////////
+Customerall() {
+    this.http.get<any>('http://localhost:9090/Customerall').subscribe((data: any) => {
+      // Assuming 'customers' is the property containing the array of names
+      this.names = data.map((data: any) => data.name);
+    });
+  }
+  sentTransactions: any[] | undefined;
+  receivedTransactions: any[] | undefined;
+  fetchTransactions(): void {
+    this.use.getTransactions(this.name).subscribe((data: Transaction[]) => {
+      console.log("Transactions:", data); // Log the response for debugging
+      this.productList = data;
+      // const filteredTransactions = data.filter(transaction => transaction.sender === this.name);
+
+      // // Assign filtered transactions to productList
+      // this.productList = filteredTransactions;
+
+      // // You can perform additional actions here with the filtered transactions if needed
+      // if (filteredTransactions.length > 0) {
+      //   console.log("Transactions from", this.name, ":", filteredTransactions);
+      // } else {
+      //   console.log("No transactions found from", this.name);
+      // }
+      // this.transactions = data; // Assign the response to the component variable
+      // console.log("Sent Transactions:", data.sent);
+      // console.log("Received Transactions:", data.received);
+      // this.sentTransactions = data.sent;
+      // this.receivedTransactions = data.received;
+    });
+  }
+/////////////
+ export interface Transaction {
+    type: string;
+    id: number;
+    date: string;
+    sender: string;
+    received: string;
+    amount: number;
+  }
+/////////////
+private apiUrl2 = 'http://localhost:9090/transactions'; // Adjust the URL as needed
+
+
+  getTransactions(name: string): Observable<Transaction[]> {
+    return this.http.get<Transaction[]>(`${this.apiUrl2}?name=${name}`);
+  }
