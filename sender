@@ -623,3 +623,38 @@ private apiUrl2 = 'http://localhost:9090/transactions'; // Adjust the URL as nee
   getTransactions(name: string): Observable<Transaction[]> {
     return this.http.get<Transaction[]>(`${this.apiUrl2}?name=${name}`);
   }
+///////////////////
+calculateTotals() {
+    // Reset totals to ensure fresh calculation each time the method is called
+    this.senderAmountTotal = 0;
+    this.receiverAmountTotal = 0;
+
+    this.productList.forEach((transaction: { sender: string; amount: string; receiver: string; }) => {
+      const amount = parseFloat(transaction.amount);  // Convert amount from string to number
+
+      if (!isNaN(amount)) {  // Check if the amount is a valid number
+        if (transaction.sender === this.name) {
+          this.senderAmountTotal += amount;
+        }
+        if (transaction.receiver === this.name) {
+          this.receiverAmountTotal += amount;
+        }
+      }
+      this.totalDifference = this.receiverAmountTotal -  this.senderAmountTotal;
+    });
+  }
+
+//////////////////////////
+senderAmountTotal: number = 0;
+  receiverAmountTotal: number = 0;
+  totalDifference: number = 0;
+////////////////////////////////////
+  <tr>
+        <td colspan="2"><strong>Total</strong></td>
+        <td><strong>{{ senderAmountTotal }}</strong></td>
+        <td><strong>{{ receiverAmountTotal }}</strong></td>
+    </tr>
+    <tr>
+        <td colspan="2"><strong>TotalAmount</strong></td>
+        <td colspan="2"><strong>{{ totalDifference }}</strong></td>
+    </tr>
