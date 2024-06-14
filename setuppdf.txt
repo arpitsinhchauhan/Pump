@@ -704,8 +704,16 @@ updateDate() {
 SELECT * FROM practice.dailytotal
 WHERE date = DATE_FORMAT(CURDATE(), '%d/%m/%Y');
 
-SELECT * FROM practice.dailytotal
+SELECT SUM(total_rs) AS total_sum
+FROM practice.dailytotal
 WHERE MONTH(STR_TO_DATE(date, '%d/%m/%Y')) = MONTH(CURDATE());
+
 
 SELECT * FROM practice.dailytotal
 where YEAR(STR_TO_DATE(date, '%d/%m/%Y')) = YEAR(CURDATE());
+
+SELECT SUM(total_rs) AS total_sum FROM practice.dailytotal
+where YEAR(STR_TO_DATE(date, '%d/%m/%Y')) = YEAR(CURDATE());
+
+
+
