@@ -663,3 +663,39 @@ export class SendmoneyComponent {
             JamabakiRepository.save(expense);
         }
     }
+/////////////
+<mat-form-field>
+                <input matInput [(ngModel)]="purchaDipStockseDetails.date" type="date" (change)="updateDate()">
+              </mat-form-field>
+
+//////////////////
+updateDate() {
+    // Update the date field in each row with the selected date
+    this.row.forEach(row => {
+      row.date = this.purchaDipStockseDetails.date;
+    });
+  }
+ purchaDipStockseDetails = {
+    date: ''
+  };
+
+  row = [
+    {
+      type: 'Petrol',
+      quantity: '',
+      total: '',
+      vat: '',
+      cess: '',
+      total_purchase: '',
+      date: ''
+    },
+    {
+      type: 'Diesel',
+      quantity: '',
+      total: '',
+      vat: '',
+      cess: '',
+      total_purchase: '',
+      date: ''
+    }
+  ];
