@@ -714,6 +714,73 @@ where YEAR(STR_TO_DATE(date, '%d/%m/%Y')) = YEAR(CURDATE());
 
 SELECT SUM(total_rs) AS total_sum FROM practice.dailytotal
 where YEAR(STR_TO_DATE(date, '%d/%m/%Y')) = YEAR(CURDATE());
+/////////////
 
+@Query("SELECT p.volume FROM practicedip p WHERE p.id = :id")
+    Double findVolumeById(@Param("id") Integer id);
+
+////
+
+@GetMapping("/practicedip/{id}")
+    public Double getPracticedipById(@PathVariable("id") Integer id) {
+        // Fetch volume by id using the repository method
+        Double volume = practicedipRepository.findVolumeById(id);
+        return volume;
+    }
+
+//////////////
+<input type="date" [(ngModel)]="date">
+<div class="box">
+    <div class="container">
+        <img class="logo" src="">
+        <form #userForm="ngForm" class="input-field">
+            <div class="input-row">
+                <input type="text" class="input" placeholder="Pdip" [(ngModel)]="pdip" (change)="fetchPvalue()"
+                    name="pdip">
+                <input type="text" class="input" placeholder="Ptotal" [(ngModel)]="ptotal" name="ptotal">
+                <input type="text" class="input" placeholder="Pvalue" [ngModel]="pvalue" name="pvalue" readonly>
+            </div>
+            <div class="input-row">
+                <input type="text" class="input" placeholder="Ddip" [(ngModel)]="dieseldip" (change)="fetchDvalue()"
+                    name="dieseldip">
+                <input type="text" class="input" placeholder="Dtotal" [(ngModel)]="dtotal" name="dtotal">
+                <input type="text" class="input" placeholder="Dvalue" [ngModel]="dvalue" name="dvalue" readonly>
+            </div>
+            <button class="add"> Add Member </button>
+        </form>
+    </div>
+</div>
+/////////////////////
+
+pvalue: number | undefined;
+  dvalue: number | undefined;
+  private apiUrl = 'http://localhost:9090';
+ fetchPvalue(): void {
+    if (this.pdip) {
+      this.http.get<number>(`${this.apiUrl}/practicedip/${this.pdip}`).subscribe(
+        (data: number) => {
+          this.pvalue = data;
+          console.log('Pvalue:', this.pvalue);
+        },
+        (error) => {
+          console.error('Error fetching Pvalue', error);
+        }
+      );
+    }
+  }
+
+  fetchDvalue(): void {
+    if (this.dieseldip) {
+      this.http.get<number>(`${this.apiUrl}/practicedip/${this.dieseldip}`).subscribe(
+        (data: number) => {
+          this.dvalue = data;
+          console.log('Dvalue:', this.dvalue);
+        },
+        (error) => {
+          console.error('Error fetching Dvalue', error);
+        }
+      );
+    }
+  }
 
 
