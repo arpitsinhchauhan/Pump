@@ -1081,3 +1081,159 @@ export interface Employee {
     employeeId: string;
     photo: string; // Photo as a File object
   }
+
+
+
+////////////////////////////
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import 'bootstrap-notify';
+
+declare var $: any;
+
+const type = ['', 'info', 'success', 'warning', 'danger', 'rose', 'primary'];
+enum NotificationType { defualt, info, success, warning, danger, rose, primary };
+
+@Injectable({
+  providedIn: 'root'
+})
+export class NotificationService {
+  timer: number;
+
+  constructor(private dialog: MatDialog) { }
+
+  success(message: string, seconds?: number) {
+    this.showNotification("top", "right", type[NotificationType.success], message, seconds);
+  }
+
+  warning(message: string, seconds?: number) {
+    this.showNotification("top", "right", type[NotificationType.warning], message, seconds);
+  }
+
+  failure(message: string, seconds?: number) {
+    this.showNotification("top", "right", type[NotificationType.danger], message, seconds);
+  }
+
+  private showNotification(from: string, align: string, type: string, message: string, timer: number) {
+    this.timer = timer > 0 ? timer : 2;
+
+    $.notify({
+      icon: 'notifications',
+      message: message,
+    }, {
+      type: type,
+      delay: this.timer * 1000,
+      placement: {
+        from: from,
+        align: align
+      },
+      template: `<div data-notify="container" class="col-xs-11 col-sm-3 alert alert-{0} alert-with-icon" role="alert">
+        <button mat-raised-button type="button" aria-hidden="true" class="close" data-notify="dismiss"><i class="material-icons">close</i></button>
+        <i class="material-icons" data-notify="icon">notifications</i>
+        <span data-notify="title">{1}</span>
+        <span data-notify="message" style="word-break: break-word;">{2}</span>
+        <div class="progress" data-notify="progressbar">
+          <div class="progress-bar progress-bar-{0}" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div>
+        </div>
+        <a href="{3}" target="{4}" data-notify="url"></a>
+      </div>`
+    });
+  }
+}
+////////////////////////////
+import { TestBed } from '@angular/core/testing';
+
+import { NotificationService } from './notification.service';
+
+describe('NotificationService', () => {
+  let service: NotificationService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(NotificationService);
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+});
+
+
+//////////////////
+import { Injectable } from '@angular/core';
+import { NgxSpinnerService } from 'ngx-spinner';
+import { BehaviorSubject } from 'rxjs';
+declare const $: any;
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LoaderService {
+  initialLoader = true;
+
+  constructor(private spinnerService: NgxSpinnerService) { }
+
+  public status: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+
+  display(value: boolean) {
+    if (value) {
+      this.spinnerService.show();
+    } else {
+      this.spinnerService.hide();
+    }
+    this.status.next(value);
+  }
+}
+
+///////////////////
+import { TestBed } from '@angular/core/testing';
+
+import { LoaderService } from './loader.service';
+
+describe('LoaderService', () => {
+  let service: LoaderService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(LoaderService);
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+});
+///////////////////
+<router-outlet>
+    <!-- <div *ngIf="showLoader" class="sk" [@loaderInOut]>
+        <div class="spinner">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+        </div>
+    </div> -->
+    <ngx-spinner size="medium" [type]="typeSelected" [bdColor]="color" [@loaderInOut]></ngx-spinner> -->
+    <!-- <ngx-spinner bdColor="rgba(0, 0, 0, 0.8)" size="medium" color="#fff" type="ball-clip-rotate"></ngx-spinner> -->
+</router-outlet>
+
+//////////////
+openDatabaseDialog(data: any): void {
+    const dialogRef = this.dialog.open(DatabaseConfigDetailsComponent, {
+      width: '70%',
+      height: '60%',
+      disableClose: true,
+      data: data
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result.isReload) {
+        this.fetchServerList();
+        this.getDataBaseList();
+      }
+    });
+  }
+/////////////
+  isReload: boolean;
+cancel() {
+    this.dialogRef.close({ 'isReload': this.isReload });
+  }
