@@ -1237,3 +1237,32 @@ openDatabaseDialog(data: any): void {
 cancel() {
     this.dialogRef.close({ 'isReload': this.isReload });
   }
+////////////////////
+{
+  "/api/*": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": ""
+    }
+  }
+}
+
+/////
+
+
+
+// --- URL for local develoment
+
+//const prefix = ".."
+//   const prefix = ""  // for deply in spring boot
+const prefix = "api"  // for deploy on tomcat
+
+
+
+/** login */
+export const API_Login: string = `${prefix}/main/validate-login`;
+export const API_DATABASECONFIG_UPDATE: string = `${prefix}/database-config/`;
+
